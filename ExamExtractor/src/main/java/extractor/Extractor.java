@@ -15,9 +15,9 @@ import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvException;
 
 public class Extractor {
-    private final PDDocument pdf;
+    private PDDocument pdf;
 
-    public Extractor(URL url) throws IOException {
+    public void loadURL(URL url) throws IOException {
         this.pdf = PDDocument.load(url.openStream());
     }
 

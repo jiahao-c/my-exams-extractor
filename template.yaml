@@ -28,16 +28,17 @@ Resources:
             ApiId: !Ref ExtractAPI
             Path: /extract
             Method: POST
-            TimeoutInMillis: 60000
+
 
   ExtractAPI:
     Type: AWS::Serverless::HttpApi
     Properties:
       RouteSettings:
         "POST /extract":
-          ThrottlingBurstLimit: 10
+          ThrottlingBurstLimit: 3
+          ThrottlingRateLimit: 3
       AccessLogSettings: 
-        DestinationArn: arn:aws:logs:ca-central-1:793049549561:log-group:apigateway
+        DestinationArn: !GetAtt AccessLogs.Arn
         Format: '{ "requestId":"$context.requestId", "ip": "$context.identity.sourceIp", "requestTime":"$context.requestTime", "httpMethod":"$context.httpMethod","routeKey":"$context.routeKey", "status":"$context.status","protocol":"$context.protocol", "responseLength":"$context.responseLength" }'
       CorsConfiguration:
         AllowOrigins:
@@ -50,11 +51,14 @@ Resources:
           - "*"
         MaxAge: 600
         AllowCredentials: false
+  
+  AccessLogs:
+    Type: AWS::Logs::LogGroup
 
 Outputs:
   ExamExtractorApi:
     Description: "API Gateway endpoint URL for Prod stage for Exam Extractor function"
-    Value: !Sub "https://${ExtractAPI}.execute-api.${AWS::Region}.amazonaws.com/Prod/extract/"
+    Value: !Sub "https://${ExtractAPI}.execute-api.${AWS::Region}.amazonaws.com/extract"
   ExamExtractor:
     Description: "Exam Extractor Lambda Function ARN"
     Value: !GetAtt ExamExtractor.Arn

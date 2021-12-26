@@ -6,37 +6,51 @@ import java.util.List;
 import java.util.Map;
 
 import com.amazonaws.services.lambda.runtime.Context;
-import com.amazonaws.services.lambda.runtime.LambdaLogger;
+// import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
+import com.amazonaws.services.lambda.runtime.events.CloudFrontEvent.Response;
 import com.google.gson.Gson;
 
 public class App implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
+    Map<String, String> responseHeaders = new HashMap<>();
+
+    Gson gson = new Gson();
+    Extractor extractor = new Extractor();
+    Map<String, ResponseBody> cache = new HashMap<>();
 
     public APIGatewayProxyResponseEvent handleRequest(final APIGatewayProxyRequestEvent input, final Context context) {
-        Map<String, String> responseHeaders = new HashMap<>();
-        LambdaLogger logger = context.getLogger();
+        // LambdaLogger logger = context.getLogger();
+        String requestBodyString = input.getBody();
+        RequestBody requestBody = gson.fromJson(requestBodyString, RequestBody.class);
+
         responseHeaders.put("Content-Type", "application/json");
         responseHeaders.put("X-Custom-Header", "application/json");
         APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent()
                 .withHeaders(responseHeaders);
-        Gson gson = new Gson();
-        String requestBodyString = input.getBody();
-        RequestBody requestBody = gson.fromJson(requestBodyString, RequestBody.class);
 
-        try {
-            Extractor extractor = new Extractor(new URL(requestBody.url));
-            List<ExamSession> exams = extractor.extract_csv_to_ExamSessions();
-            logger.log("Started extraction");
-            return response
-                    .withStatusCode(200)
-                    .withBody(gson.toJson(new ResponseBody(exams)));
+        // check if the url is in the cache
+        if (cache.containsKey(requestBody.url)) {
+            response.setBody(gson.toJson(cache.get(requestBody.url)));
+            response.setStatusCode(200);
+            return response;
+        } else {
+            try {
+                extractor.loadURL(new URL(requestBody.url));
+                List<ExamSession> exams = extractor.extract_csv_to_ExamSessions();
+                ResponseBody responseBody = new ResponseBody(exams);
+                cache.put(requestBody.url, responseBody);
+                // logger.log("Started extraction");
+                return response
+                        .withStatusCode(200)
+                        .withBody(gson.toJson(responseBody));
 
-        } catch (Exception e) {
-            return response
-                    .withBody(gson.toJson("something went wrong"))
-                    .withStatusCode(500);
+            } catch (Exception e) {
+                return response
+                        .withBody(gson.toJson("something went wrong"))
+                        .withStatusCode(500);
+            }
         }
     }
 
