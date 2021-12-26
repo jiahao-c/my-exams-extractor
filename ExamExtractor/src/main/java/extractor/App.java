@@ -6,11 +6,10 @@ import java.util.List;
 import java.util.Map;
 
 import com.amazonaws.services.lambda.runtime.Context;
-// import com.amazonaws.services.lambda.runtime.LambdaLogger;
+import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
-import com.amazonaws.services.lambda.runtime.events.CloudFrontEvent.Response;
 import com.google.gson.Gson;
 
 public class App implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
@@ -21,7 +20,8 @@ public class App implements RequestHandler<APIGatewayProxyRequestEvent, APIGatew
     Map<String, ResponseBody> cache = new HashMap<>();
 
     public APIGatewayProxyResponseEvent handleRequest(final APIGatewayProxyRequestEvent input, final Context context) {
-        // LambdaLogger logger = context.getLogger();
+        LambdaLogger logger = context.getLogger();
+        logger.log("start handleRequest");
         String requestBodyString = input.getBody();
         RequestBody requestBody = gson.fromJson(requestBodyString, RequestBody.class);
 
@@ -32,16 +32,18 @@ public class App implements RequestHandler<APIGatewayProxyRequestEvent, APIGatew
 
         // check if the url is in the cache
         if (cache.containsKey(requestBody.url)) {
+            logger.log("url is in the cache");
             response.setBody(gson.toJson(cache.get(requestBody.url)));
             response.setStatusCode(200);
             return response;
         } else {
+            logger.log("url is not in the cache");
             try {
                 extractor.loadURL(new URL(requestBody.url));
                 List<ExamSession> exams = extractor.extract_csv_to_ExamSessions();
                 ResponseBody responseBody = new ResponseBody(exams);
                 cache.put(requestBody.url, responseBody);
-                // logger.log("Started extraction");
+                logger.log("done cache result");
                 return response
                         .withStatusCode(200)
                         .withBody(gson.toJson(responseBody));
