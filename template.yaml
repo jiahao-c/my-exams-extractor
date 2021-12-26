@@ -22,19 +22,39 @@ Resources:
         Variables:
           PARAM1: VALUE
       Events:
-        Extract:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+        ExplicitApi:
+          Type: HttpApi # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
           Properties:
+            ApiId: !Ref ExtractAPI
             Path: /extract
-            Method: post
+            Method: POST
+            TimeoutInMillis: 60000
+
+  ExtractAPI:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      RouteSettings:
+        "POST /extract":
+          ThrottlingBurstLimit: 10
+      AccessLogSettings: 
+        DestinationArn: arn:aws:logs:ca-central-1:793049549561:log-group:apigateway
+        Format: '{ "requestId":"$context.requestId", "ip": "$context.identity.sourceIp", "requestTime":"$context.requestTime", "httpMethod":"$context.httpMethod","routeKey":"$context.routeKey", "status":"$context.status","protocol":"$context.protocol", "responseLength":"$context.responseLength" }'
+      CorsConfiguration:
+        AllowOrigins:
+          - "http://localhost:8080/"
+        AllowHeaders:
+          - "*"
+        AllowMethods:
+          - "*"
+        ExposeHeaders:
+          - "*"
+        MaxAge: 600
+        AllowCredentials: false
 
 Outputs:
-  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
-  # Find out more about other implicit resources you can reference within SAM
-  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
   ExamExtractorApi:
     Description: "API Gateway endpoint URL for Prod stage for Exam Extractor function"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/extract/"
+    Value: !Sub "https://${ExtractAPI}.execute-api.${AWS::Region}.amazonaws.com/Prod/extract/"
   ExamExtractor:
     Description: "Exam Extractor Lambda Function ARN"
     Value: !GetAtt ExamExtractor.Arn
