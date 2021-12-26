@@ -26,7 +26,6 @@ public class App implements RequestHandler<APIGatewayProxyRequestEvent, APIGatew
         RequestBody requestBody = gson.fromJson(requestBodyString, RequestBody.class);
 
         responseHeaders.put("Content-Type", "application/json");
-        responseHeaders.put("X-Custom-Header", "application/json");
         APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent()
                 .withHeaders(responseHeaders);
 
